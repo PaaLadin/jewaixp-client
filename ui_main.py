@@ -7,6 +7,7 @@ from tkinter import messagebox, font as tkfont
 
 import icons
 import state as st_mod
+import sound
 
 
 BG = "#c0c0c0"
@@ -65,6 +66,9 @@ class MainWindow(object):
         filem = tk.Menu(m, tearoff=0)
         filem.add_command(label="Settings...", command=self.on_settings)
         filem.add_separator()
+        self._sound_on = True
+        filem.add_command(label="Sound on/off", command=self._toggle_sound)
+        filem.add_separator()
         filem.add_command(label="Exit", command=self.root.destroy)
         m.add_cascade(label="File", menu=filem)
 
@@ -118,10 +122,14 @@ class MainWindow(object):
 
         bf = tk.Frame(self.root, bg=BG)
         bf.pack(fill="x", padx=2, pady=2)
-        tk.Button(bf, text="Add Users", font=FONT_NORM,
-                  command=self._noop, bd=1, relief="raised", bg=BG).pack(side="left", padx=1)
-        tk.Button(bf, text="ICQ Now!", font=FONT_NORM,
-                  command=self.refresh_channels, bd=1, relief="raised", bg=BG).pack(side="left", padx=1)
+        tk.Button(bf, text="COUNCIL", font=FONT_NORM, width=7,
+                  command=self.on_council, bd=1, relief="raised", bg="#ffe080").pack(side="left", padx=1)
+        tk.Button(bf, text="PAUSE", font=FONT_NORM, width=6,
+                  command=self.on_pause_all, bd=1, relief="raised", bg="#ffb080").pack(side="left", padx=1)
+        tk.Button(bf, text="RESUME", font=FONT_NORM, width=6,
+                  command=self.on_resume, bd=1, relief="raised", bg="#a0ffa0").pack(side="left", padx=1)
+        tk.Button(bf, text="Logs", font=FONT_NORM, width=5,
+                  command=self.on_logs, bd=1, relief="raised", bg=BG).pack(side="right", padx=1)
 
         sb2 = tk.Frame(self.root, bg=BG, bd=1, relief="sunken")
         sb2.pack(fill="x", side="bottom")
@@ -131,6 +139,8 @@ class MainWindow(object):
         self.lbl_stat = tk.Label(sb2, text="Disconnected", bg=BG,
                                  font=FONT_NORM, anchor="w")
         self.lbl_stat.pack(side="left", fill="x", expand=True)
+        self.lbl_cmds = tk.Label(sb2, text="", bg=BG, font=FONT_NORM)
+        self.lbl_cmds.pack(side="right", padx=4)
 
     def _noop(self):
         pass
@@ -258,6 +268,40 @@ class MainWindow(object):
         except Exception:
             pass
 
+    def on_council(self):
+        r = self.api.meeting_on(True)
+        self._flash_status("COUNCIL ON", r)
+
+    def on_pause_all(self):
+        r = self.api.pause_all(True)
+        self._flash_status("PAUSE-ALL", r)
+
+    def on_resume(self):
+        r = self.api.pause_all(False)
+        if r.get("ok"):
+            self.api.meeting_on(False)
+        self._flash_status("RESUME", r)
+
+    def on_logs(self):
+        import ui_chat
+        ui_chat.HistoryWindow(self.root, self.api, "ALL", "Logs - chat")
+
+    def _flash_status(self, what, result):
+        ok = result.get("ok")
+        msg = what + (" ok" if ok else " FAIL")
+        try:
+            self.lbl_stat.configure(text=msg)
+        except Exception:
+            pass
+
+    def _toggle_sound(self):
+        self._sound_on = not getattr(self, "_sound_on", True)
+        sound.set_enabled(self._sound_on)
+        try:
+            self.lbl_stat.configure(text="sound " + ("on" if self._sound_on else "off"))
+        except Exception:
+            pass
+
     def _set_icon(self, ch, kind):
         info = self.rows.get(ch)
         if not info:
@@ -328,6 +372,7 @@ class MainWindow(object):
         if not connected:
             return
 
+        prev_total = self.state.total_unread()
         rm = self.api.messages_all()
         if rm.get("ok"):
             data = rm["data"]
@@ -342,10 +387,41 @@ class MainWindow(object):
                 msgs = rc["data"].get("messages") or []
                 self.state.unread_count[ch] = self.state.count_new(ch, msgs)
 
+        # play sound if total unread grew
+        try:
+            if self.state.total_unread() > prev_total:
+                sound.message()
+        except Exception:
+            pass
+
         rs = self.api.status()
         ch_info = {}
         if rs.get("ok"):
-            ch_info = rs["data"].get("channels") or {}
+            data = rs["data"]
+            ch_info = data.get("channels") or {}
+            # cmds_from_start: aggregate or per-channel, take max
+            try:
+                cmds = None
+                if isinstance(data.get("cmds_from_start"), int):
+                    cmds = data.get("cmds_from_start")
+                else:
+                    vals = []
+                    for k in ch_info:
+                        v = ch_info[k].get("cmds_from_start")
+                        if isinstance(v, int):
+                            vals.append(v)
+                    if vals:
+                        cmds = max(vals)
+                if cmds is not None:
+                    self.lbl_cmds.configure(text="cmds:" + str(cmds))
+                    if cmds >= 850:
+                        self.lbl_cmds.configure(fg="#e00000")
+                    elif cmds >= 700:
+                        self.lbl_cmds.configure(fg="#c08000")
+                    else:
+                        self.lbl_cmds.configure(fg="#000080")
+            except Exception:
+                pass
 
         for ch, info in list(self.rows.items()):
             info["base"] = self._base_kind(ch, ch_info)

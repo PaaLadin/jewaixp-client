@@ -5,6 +5,7 @@
 import tkinter as tk
 
 import icons
+import sound
 
 
 BG = "#c0c0c0"
@@ -201,6 +202,7 @@ class ChatWindow(object):
                              bg="white", bd=2, relief="sunken")
         self.entry.pack(fill="both", expand=True)
         self.entry.bind("<KeyRelease>", self._on_key)
+        self.entry.bind("<KeyRelease>", lambda e: sound.typekey(), add="+")
         self.entry.bind("<Control-Return>", self._send)
 
         hist_wrap = tk.Frame(self.win, bg=BG)
@@ -249,6 +251,10 @@ class ChatWindow(object):
         else:
             r = self.api.send_personal(self.ch, text)
         if r.get("ok"):
+            try:
+                sound.sent()
+            except Exception:
+                pass
             self._append("SYS", "sent")
         else:
             self._append("ERR", str(r.get("error"))[:120])

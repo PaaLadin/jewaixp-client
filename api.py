@@ -51,11 +51,17 @@ class Api(object):
     def status(self):
         return self._get("/api/status")
 
+    def meeting(self):
+        return self._get("/api/meeting")
+
     def messages_all(self):
         return self._get("/api/messages")
 
     def chat(self, ch):
         return self._get("/api/chat/" + ch)
+
+    def logs(self, name="chat"):
+        return self._get("/api/logs?name=" + name)
 
     def send_all(self, text):
         return self._post("/api/send", {"from": self.nick, "to": "ALL", "text": text})
@@ -63,8 +69,8 @@ class Api(object):
     def send_personal(self, ch, text):
         return self._post("/api/chat/" + ch, {"from": self.nick, "text": text})
 
-    def logs(self, name='chat'):
-        return self._get('/api/logs?name=' + name)
-
     def pause_all(self, on):
         return self._post("/api/pause_all", {"on": bool(on)})
+
+    def meeting_on(self, on):
+        return self._post("/api/meeting", {"on": bool(on)})

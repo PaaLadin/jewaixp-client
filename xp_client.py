@@ -18,6 +18,7 @@ import api as api_mod
 import state as st_mod
 import ui_main
 import ui_chat
+import sound
 
 
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "xp_client.json")
@@ -65,6 +66,11 @@ class Client(object):
         self.open_chats = {}     # ch -> ChatWindow
         self.main = None
         self._build_main()
+        # startup sound
+        try:
+            sound.startup()
+        except Exception:
+            pass
 
     def _build_main(self):
         self.main = ui_main.MainWindow(
