@@ -1,0 +1,30 @@
+# Secrets and local config
+xp_client.json
+.agent_token
+.agent_token.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs and runtime
+*.log
+unread.json
+_t_dir/
+
+# Python installer (large file, download separately)
+python-3.4.4.msi
+
+# Local backups
+*.bak
+*.bak_*
+backups/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

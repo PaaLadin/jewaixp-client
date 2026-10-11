@@ -1,0 +1,6 @@
+{
+  "server": "http://192.168.1.24:8770",
+  "nick": "operator",
+  "poll_ms": 4000,
+  "font_size": 9
+}
